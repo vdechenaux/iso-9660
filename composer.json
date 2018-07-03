@@ -1,0 +1,22 @@
+{
+    "name": "vdechenaux/iso-9660",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Vincent Dechenaux",
+            "homepage": "https://github.com/vdechenaux"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "ISO9660\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.2"
+    }
+}
