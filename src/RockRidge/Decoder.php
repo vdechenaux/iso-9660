@@ -37,6 +37,11 @@ final class Decoder
                 $rawData .= fread($stream, $CEdata['AreaLength']);
                 fseek($stream, $currentPos);
             }
+
+            // Skip potential padding byte
+            if (substr($rawData, $position, 1) === chr(0)) {
+                $position++;
+            }
         }  while ($position < strlen($rawData) - 3); // Ensure there is at least 4 bytes to read
     }
 }
