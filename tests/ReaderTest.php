@@ -5,14 +5,16 @@ use PHPUnit\Framework\TestCase;
 
 class ReaderTest extends TestCase
 {
-    private const isoPath = __DIR__ . '/fixtures/withRockRidge.iso';
+    private const isoWithRockRidgePath = __DIR__ . '/fixtures/withRockRidge.iso';
+    private const isoWithJolietPath = __DIR__ . '/fixtures/withJoliet.iso';
+    private const isoWithRockRidgeAndJolietPath = __DIR__ . '/fixtures/withRockRidgeAndJoliet.iso';
     private const isoWithoutRockRidgePath = __DIR__ . '/fixtures/withoutRockRidge.iso';
 
     public function dataProvider listFiles() : array
     {
         return [
             [
-                self::isoPath,
+                self::isoWithRockRidgePath,
                 [
                     '/dir1',
                     '/dir1/dir2',
@@ -28,6 +30,39 @@ class ReaderTest extends TestCase
                     '/lorem-symlink.txt',
                     '/Nulla-egestas-orci-eu-facilisis-viverra-augue-quam-ultrices-lectus-nec-ultrices-erat-mauris-at-sapien.txt',
                     '/rr_moved',
+                ],
+            ],
+            [
+                self::isoWithRockRidgeAndJolietPath,
+                [
+                    '/dir1',
+                    '/dir1/dir2',
+                    '/dir1/dir2/dir3',
+                    '/dir1/dir2/dir3/dir4',
+                    '/dir1/dir2/dir3/dir4/dir5',
+                    '/dir1/dir2/dir3/dir4/dir5/dir6',
+                    '/dir1/dir2/dir3/dir4/dir5/dir6/dir7',
+                    '/dir1/dir2/dir3/dir4/dir5/dir6/dir7/dir8',
+                    '/dir1/dir2/dir3/dir4/dir5/dir6/dir7/dir8/dir9',
+                    '/dir1/dir2/dir3/dir4/dir5/dir6/dir7/dir8/dir9/lorem.txt',
+                    '/index.php',
+                    '/lorem-symlink.txt',
+                    '/Nulla-egestas-orci-eu-facilisis-viverra-augue-quam-ultrices-lectus-nec-ultrices-erat-mauris-at-sapien.txt',
+                    '/rr_moved',
+                ],
+            ],
+            [
+                self::isoWithJolietPath,
+                [
+                    '/Nulla-egestas-orci-eu-facilisis-viverra-augue-quam-ultrices-lect',
+                    '/dir1',
+                    '/dir1/dir2',
+                    '/dir1/dir2/dir3',
+                    '/dir1/dir2/dir3/dir4',
+                    '/dir1/dir2/dir3/dir4/dir5',
+                    '/dir1/dir2/dir3/dir4/dir5/dir6',
+                    '/dir1/dir2/dir3/dir4/dir5/dir6/dir7',
+                    '/index.php',
                 ],
             ],
             [
@@ -60,7 +95,7 @@ class ReaderTest extends TestCase
 
     public function test listFiles with prefix and slashes()
     {
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
 
         self::assertSame(
             iterator_to_array($reader->listFiles('/dir1/dir2/dir3')),
@@ -75,7 +110,7 @@ class ReaderTest extends TestCase
 
     public function test listFiles with maxDepth()
     {
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
 
         self::assertSame([
             '/dir1',
@@ -94,7 +129,7 @@ class ReaderTest extends TestCase
 
     public function test getFileContent()
     {
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
 
         $expected = <<<RAW
 <?php
@@ -109,7 +144,7 @@ RAW;
 
     public function test getFileContent with File object()
     {
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
 
         $expected = <<<RAW
 <?php
@@ -126,7 +161,7 @@ RAW;
         self::expectException(\InvalidArgumentException::class);
         self::expectExceptionMessage('You must provide a string or a File object');
 
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
         $reader->getFileContent(987654321);
     }
 
@@ -135,13 +170,13 @@ RAW;
         self::expectException(\InvalidArgumentException::class);
         self::expectExceptionMessage('File doest not exist');
 
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
         $reader->getFileContent('unknownFile');
     }
 
     public function test getFile ignores first slash()
     {
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
 
         self::assertSame(
             $reader->getFile('index.php')->getFullPath(),
@@ -156,7 +191,7 @@ RAW;
 
     public function test getFile with unknown file()
     {
-        $reader = new Reader(self::isoPath);
+        $reader = new Reader(self::isoWithRockRidgePath);
 
         self::assertNull($reader->getFile('unknownFile'));
     }

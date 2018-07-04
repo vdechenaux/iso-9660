@@ -29,9 +29,15 @@ final class Reader
     /**
      * @var array
      */
-    private $primaryVolumeDescriptor;
+    private $volumeDescriptor;
 
-    private const VOLUME_DESCRIPTOR_PVD             = 0x01;
+    /**
+     * @var bool
+     */
+    private $isJolietVolumeDescriptor = false;
+
+    private const VOLUME_DESCRIPTOR_PRIMARY         = 0x01;
+    private const VOLUME_DESCRIPTOR_SUPPLEMENTARY   = 0x02;
     private const VOLUME_DESCRIPTOR_SET_TERMINATOR  = 0xFF;
 
     public function __construct(string $filename)
@@ -41,9 +47,26 @@ final class Reader
         // Skip MBR / GPT / APM / ...
         fseek($this->stream, 16 * 2048); // 32 KiB / 16 blocks
 
-        $this->loadPrimaryVolumeDescriptor();
+        [$primaryVolumeDescriptor, $jolietVolumeDescriptor] = $this->loadVolumeDescriptors();
 
-        $rootDir = $this->readDirectory($this->primaryVolumeDescriptor['RootDirectoryEntry']);
+        $this->volumeDescriptor = $primaryVolumeDescriptor;
+        $rootDir = $this->readDirectory($this->volumeDescriptor['RootDirectoryEntry']);
+
+        if ($jolietVolumeDescriptor !== null) {
+            // Joliet is available. We check if the PVD provides Rock Ridge.
+            // If RR is available, we prefer use the PVD with RR rather than Joliet.
+            fseek($this->stream, $this->volumeDescriptor['LogicalBlockSize'] * $rootDir['ExtentLBA']);
+            $directoryRecordLength = ord(fread($this->stream, 1));
+            fseek($this->stream, -1, SEEK_CUR);
+            $topLevelDir = $this->readDirectory(fread($this->stream, $directoryRecordLength));
+
+            if (!($topLevelDir['AdditionalDataFlags'] & RockRidge\Flags::FLAG_ROCK_RIDGE)) {
+                // RR not available, we use Joliet
+                $this->volumeDescriptor = $jolietVolumeDescriptor;
+                $this->isJolietVolumeDescriptor = true;
+                $rootDir = $this->readDirectory($this->volumeDescriptor['RootDirectoryEntry']);
+            }
+        }
 
         $this->files = [];
         $this->fileAddresses = [];
@@ -91,7 +114,7 @@ final class Reader
             return false;
         }
 
-        $offset = $this->primaryVolumeDescriptor['LogicalBlockSize'] * $this->fileAddresses[$file];
+        $offset = $this->volumeDescriptor['LogicalBlockSize'] * $this->fileAddresses[$file];
         $offset += $pos;
 
         if ($length === null || ($pos+$length) > $this->files[$file]->getSize()) {
@@ -132,8 +155,14 @@ final class Reader
     /**
      * @throws InvalidIsoFile
      */
-    private function loadPrimaryVolumeDescriptor(): void
+    private function loadVolumeDescriptors(): array
     {
+        $primaryVolumeDescriptor = null;
+        $jolietVolumeDescriptor = null;
+
+        // Joliet escape sequences padding (field is 32 long, data is 3 long, fill the 29 others with zeros)
+        $padding = str_repeat(chr(0), 29);
+
         // Volume descriptor set
         do {
             if (feof($this->stream)) {
@@ -146,65 +175,89 @@ final class Reader
             $volumeDescriptorVersion = ord(fread($this->stream, 1)); // Version
             $volumeData = fread($this->stream, 2041);
 
-            if ($volumeDescriptorType === self::VOLUME_DESCRIPTOR_PVD) {
+            if (
+                $volumeDescriptorType === self::VOLUME_DESCRIPTOR_PRIMARY ||
+                $volumeDescriptorType === self::VOLUME_DESCRIPTOR_SUPPLEMENTARY
+            ) {
                 if ($volumeDescriptorIdentifier !== 'CD001' && $volumeDescriptorVersion !== 0x01) {
-                    throw new PrimaryVolumeDescriptorMalformed();
+                    if ($volumeDescriptorType === self::VOLUME_DESCRIPTOR_PRIMARY) {
+                        throw new PrimaryVolumeDescriptorMalformed();
+                    } else {
+                        continue;
+                    }
                 }
 
-                $format =
-                    'x/' .
-                    'a32SystemIdentifier/' .
-                    'a32VolumeIdentifier/' .
-                    'x8/' .
-                    'VVolumeSpaceSize/NVolumeSpaceSizeBigEndian/' .
-                    'x32/' .
-                    'vVolumeSetSize/x2/' .
-                    'vVolumeSequenceNumber/x2/' .
-                    'vLogicalBlockSize/x2/' .
-                    'VPathTableSize/x4/' .
-                    'VLPathTableLBA/' .
-                    'VLOptionalPathTableLBA/' .
-                    'VMPathTableLBA/' .
-                    'VMOptionalPathTableLBA/' .
-                    'a34RootDirectoryEntry/' .
-                    'a128VolumeSetIdentifier/' .
-                    'a128PublisherIdentifier/' .
-                    'a128DataPreparerIdentifier/' .
-                    'a128ApplicationIdentifier/' .
-                    'a38CopyrightFileIdentifier/' .
-                    'a36AbstractFileIdentifier/' .
-                    'a37BibliographicFileIdentifier/'.
-                    'a17VolumeCreationDate/' .
-                    'a17VolumeModificationDate/' .
-                    'a17VolumeExpirationDate/' .
-                    'a17VolumeEffectiveDate';
+                $data = $this->decodePrimaryOrSupplementaryVolumeDescriptor($volumeData);
 
-                $data = unpack($format, $volumeData);
-
-                $data['VolumeCreationDate'] = DecDatetimeDecoder::decode($data['VolumeCreationDate']);
-                $data['VolumeModificationDate'] = DecDatetimeDecoder::decode($data['VolumeModificationDate']);
-                $data['VolumeExpirationDate'] = DecDatetimeDecoder::decode($data['VolumeExpirationDate']);
-                $data['VolumeEffectiveDate'] = DecDatetimeDecoder::decode($data['VolumeEffectiveDate']);
-
-                if (
-                    $data['VolumeSpaceSize'] === 0 ||
-                    $data['VolumeSpaceSize'] !== $data['VolumeSpaceSizeBigEndian']
+                if ($volumeDescriptorType === self::VOLUME_DESCRIPTOR_PRIMARY) {
+                    $primaryVolumeDescriptor = $data;
+                } elseif (
+                    $data['EscapeSequences'] === '%/@'.$padding ||
+                    $data['EscapeSequences'] === '%/C'.$padding ||
+                    $data['EscapeSequences'] === '%/E'.$padding
                 ) {
-                    throw new PrimaryVolumeDescriptorMalformed();
+                    $jolietVolumeDescriptor = $data;
                 }
-
-                unset($data['VolumeSpaceSizeBigEndian']);
-
-                $this->primaryVolumeDescriptor = $data;
-
-                return;
             }
         } while ($volumeDescriptorType !== self::VOLUME_DESCRIPTOR_SET_TERMINATOR);
+
+        if ($primaryVolumeDescriptor !== null) {
+            return [$primaryVolumeDescriptor, $jolietVolumeDescriptor];
+        }
 
         throw new PrimaryVolumeDescriptorNotFound();
     }
 
-    private function readDirectory($rawData): array
+    private function decodePrimaryOrSupplementaryVolumeDescriptor(string $volumeData) : array
+    {
+        $format =
+            'x/' .
+            'a32SystemIdentifier/' .
+            'a32VolumeIdentifier/' .
+            'x8/' .
+            'VVolumeSpaceSize/NVolumeSpaceSizeBigEndian/' .
+            'a32EscapeSequences/' .
+            'vVolumeSetSize/x2/' .
+            'vVolumeSequenceNumber/x2/' .
+            'vLogicalBlockSize/x2/' .
+            'VPathTableSize/x4/' .
+            'VLPathTableLBA/' .
+            'VLOptionalPathTableLBA/' .
+            'VMPathTableLBA/' .
+            'VMOptionalPathTableLBA/' .
+            'a34RootDirectoryEntry/' .
+            'a128VolumeSetIdentifier/' .
+            'a128PublisherIdentifier/' .
+            'a128DataPreparerIdentifier/' .
+            'a128ApplicationIdentifier/' .
+            'a38CopyrightFileIdentifier/' .
+            'a36AbstractFileIdentifier/' .
+            'a37BibliographicFileIdentifier/'.
+            'a17VolumeCreationDate/' .
+            'a17VolumeModificationDate/' .
+            'a17VolumeExpirationDate/' .
+            'a17VolumeEffectiveDate';
+
+        $data = unpack($format, $volumeData);
+
+        $data['VolumeCreationDate'] = DecDatetimeDecoder::decode($data['VolumeCreationDate']);
+        $data['VolumeModificationDate'] = DecDatetimeDecoder::decode($data['VolumeModificationDate']);
+        $data['VolumeExpirationDate'] = DecDatetimeDecoder::decode($data['VolumeExpirationDate']);
+        $data['VolumeEffectiveDate'] = DecDatetimeDecoder::decode($data['VolumeEffectiveDate']);
+
+        if (
+            $data['VolumeSpaceSize'] === 0 ||
+            $data['VolumeSpaceSize'] !== $data['VolumeSpaceSizeBigEndian']
+        ) {
+            throw new PrimaryVolumeDescriptorMalformed();
+        }
+
+        unset($data['VolumeSpaceSizeBigEndian']);
+
+        return $data;
+    }
+
+    private function readDirectory(string $rawData): array
     {
         $format =
             'CDirectoryRecordLength/' .
@@ -233,7 +286,7 @@ final class Reader
         if (strlen($rawData) > $directoryDataEnd) {
             // There is additional data, read it
             $rawDataAdditional = substr($rawData, $directoryDataEnd);
-            Decoder::decodeData($rawDataAdditional, $directoryData, $this->stream, $this->primaryVolumeDescriptor['LogicalBlockSize']);
+            Decoder::decodeData($rawDataAdditional, $directoryData, $this->stream, $this->volumeDescriptor['LogicalBlockSize']);
         }
 
         return $directoryData;
@@ -241,7 +294,7 @@ final class Reader
 
     private function loadFiles(int $lbaAddress, string $pathPrefix = '') : void
     {
-        fseek($this->stream, $this->primaryVolumeDescriptor['LogicalBlockSize'] * $lbaAddress);
+        fseek($this->stream, $this->volumeDescriptor['LogicalBlockSize'] * $lbaAddress);
 
         $i = 0;
         while ($directoryRecordLength = ord(fread($this->stream, 1))) {
@@ -264,6 +317,10 @@ final class Reader
             }
 
             $isDir = (bool) ($dir['FileFlags'] & Flags::FLAG_DIRECTORY);
+
+            if ($this->isJolietVolumeDescriptor) {
+                $dir['FileName'] = mb_convert_encoding($dir['FileName'], 'UTF-8', 'UCS-2');
+            }
 
             // remove potential ";1" if RockRidge is not available
             if (!$isDir && $separatorPosition = strrpos($dir['FileName'], ';')) {
