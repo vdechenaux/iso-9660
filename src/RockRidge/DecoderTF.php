@@ -69,7 +69,7 @@ final class DecoderTF implements EntryDecoder
         ];
     }
 
-    private function decodeTimestamp(string $data, bool $longFormUsed) : \DateTimeInterface
+    private function decodeTimestamp(string $data, bool $longFormUsed) : ?\DateTimeInterface
     {
         if ($longFormUsed) {
             return DecDatetimeDecoder::decode($data);

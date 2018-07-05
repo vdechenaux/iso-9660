@@ -21,9 +21,7 @@ class DecDatetimeDecoderTest extends TestCase
 
     public function test with wrong input of 17 chars()
     {
-        $this->expectException(InvalidArgumentException::class);
-
-        DecDatetimeDecoder::decode('12345testtesttest');
+        self::assertNull(DecDatetimeDecoder::decode('12345testtesttest'));
     }
 
     public function test with good data()

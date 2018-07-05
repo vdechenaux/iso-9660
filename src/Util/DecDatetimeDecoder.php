@@ -7,7 +7,7 @@ final class DecDatetimeDecoder
     /**
      * @throws \InvalidArgumentException
      */
-    public static function decode(string $input) : \DateTimeInterface
+    public static function decode(string $input) : ?\DateTimeInterface
     {
         if (strlen($input) !== 17) {
             throw new \InvalidArgumentException('Input must be 17 characters long');
@@ -15,7 +15,7 @@ final class DecDatetimeDecoder
 
         $matches = [];
         if (!preg_match('/^([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})/', $input, $matches)) {
-            throw new \InvalidArgumentException('Input is not valid');
+            return null;
         }
 
         $result = new \DateTime();
