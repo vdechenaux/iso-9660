@@ -83,6 +83,8 @@ final class StreamWrapper
 
     public function stream_stat()
     {
+        $stat = [];
+
         $stat[0] = $stat['dev'] = 0;
         $stat[1] = $stat['ino'] = 0;
         $stat[2] = $stat['mode'] = $this->internalFile->getMode();
