@@ -2,6 +2,7 @@
 
 use ISO9660\Exception\PrimaryVolumeDescriptorNotFound;
 use ISO9660\StreamWrapper;
+use PHPUnit\Framework\Error\Warning;
 use PHPUnit\Framework\TestCase;
 
 class StreamWrapperTest extends TestCase
@@ -95,6 +96,30 @@ RAW;
         self::assertEquals($expected, file_get_contents(self::isoPathWithScheme.'#index.php'));
     }
 
+    public function test file_get_contents on hidden file()
+    {
+        StreamWrapper::register();
+
+        $expected = <<<RAW
+I'm hidden!
+
+RAW;
+
+        $opts = [
+            'iso9660' => [
+                'showHiddenFiles'  => true,
+            ]
+        ];
+
+        $context  = stream_context_create($opts);
+
+        self::assertEquals($expected, file_get_contents(self::isoPathWithScheme.'#hiddenFile', false, $context));
+
+        // Same file, without custom context : error
+        self::expectException(Warning::class);
+        file_get_contents(self::isoPathWithScheme.'#hiddenFile');
+    }
+
     public function test file_get_contents on symlink()
     {
         StreamWrapper::register();
@@ -111,7 +136,7 @@ RAW;
     {
         StreamWrapper::register();
 
-        self::expectException(\PHPUnit\Framework\Error\Warning::class);
+        self::expectException(Warning::class);
         file_get_contents(self::isoPathWithScheme.'#unknown.mp3');
     }
 
@@ -119,7 +144,7 @@ RAW;
     {
         StreamWrapper::register();
 
-        self::expectException(\PHPUnit\Framework\Error\Warning::class);
+        self::expectException(Warning::class);
         fopen(self::isoPathWithScheme.'#index.php', 'w');
     }
 
@@ -127,7 +152,7 @@ RAW;
     {
         StreamWrapper::register();
 
-        self::expectException(\PHPUnit\Framework\Error\Warning::class);
+        self::expectException(Warning::class);
         mkdir(self::isoPathWithScheme.'#index.php');
     }
 
@@ -169,7 +194,7 @@ RAW;
             5  => 1000,         'gid'       => 1000,
             6  => -1,           'rdev'      => -1,
             7  => 18,           'size'      => 18,
-            8  => 1530116179,   'atime'     => 1530116179,
+            8  => 1530799053,   'atime'     => 1530799053,
             9  => 1529599503,   'mtime'     => 1529599503,
             10 => 0,            'ctime'     => 0,
             11 => -1,           'blksize'   => -1,
@@ -185,7 +210,7 @@ RAW;
             5  => 1000,         'gid'       => 1000,
             6  => -1,           'rdev'      => -1,
             7  => 27,           'size'      => 27,
-            8  => 1530116179,   'atime'     => 1530116179,
+            8  => 1530704780,   'atime'     => 1530704780,
             9  => 1529474632,   'mtime'     => 1529474632,
             10 => 0,            'ctime'     => 0,
             11 => -1,           'blksize'   => -1,
@@ -206,7 +231,7 @@ RAW;
             5  => 1000,         'gid'       => 1000,
             6  => -1,           'rdev'      => -1,
             7  => 18,           'size'      => 18,
-            8  => 1530116179,   'atime'     => 1530116179,
+            8  => 1530799053,   'atime'     => 1530799053,
             9  => 1529599503,   'mtime'     => 1529599503,
             10 => 0,            'ctime'     => 0,
             11 => -1,           'blksize'   => -1,
@@ -222,7 +247,7 @@ RAW;
             5  => 1000,         'gid'       => 1000,
             6  => -1,           'rdev'      => -1,
             7  => 0,            'size'      => 0,
-            8  => 1530116179,   'atime'     => 1530116179,
+            8  => 1530795122,   'atime'     => 1530795122,
             9  => 1529474706,   'mtime'     => 1529474706,
             10 => 0,            'ctime'     => 0,
             11 => -1,           'blksize'   => -1,

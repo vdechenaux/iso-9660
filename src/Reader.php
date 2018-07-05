@@ -36,12 +36,19 @@ final class Reader
      */
     private $isJolietVolumeDescriptor = false;
 
+    /**
+     * @var ReaderOptions
+     */
+    private $options;
+
     private const VOLUME_DESCRIPTOR_PRIMARY         = 0x01;
     private const VOLUME_DESCRIPTOR_SUPPLEMENTARY   = 0x02;
     private const VOLUME_DESCRIPTOR_SET_TERMINATOR  = 0xFF;
 
-    public function __construct(string $filename)
+    public function __construct(string $filename, ReaderOptions $options = null)
     {
+        $this->options = $options ?? new ReaderOptions();
+
         $this->stream = fopen($filename, 'r');
 
         // Skip MBR / GPT / APM / ...
@@ -312,7 +319,7 @@ final class Reader
             }
 
             // Skip hidden files
-            if ($dir['FileFlags'] & Flags::FLAG_HIDDEN_FILE) {
+            if (!$this->options->showHiddenFiles && $dir['FileFlags'] & Flags::FLAG_HIDDEN_FILE) {
                 continue;
             }
 

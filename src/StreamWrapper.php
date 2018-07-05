@@ -17,6 +17,11 @@ final class StreamWrapper
     private static $lastFileName;
 
     /**
+     * @var array
+     */
+    private static $lastContextOptions;
+
+    /**
      * @var Reader
      */
     private static $lastReader;
@@ -35,6 +40,11 @@ final class StreamWrapper
      * @var \Generator
      */
     private $readDirIterator;
+
+    /**
+     * @var resource Magically set by PHP
+     */
+    public $context;
 
     public static function register()
     {
@@ -188,14 +198,17 @@ final class StreamWrapper
         $isoFile = $url['path'];
         $internalFile = $url['fragment'] ?? '';
 
-        if ($isoFile === self::$lastFileName) {
-            // Use the last reader if the file is the same, to prevent reload all iso file data
+        $currentOptions = is_resource($this->context) ? stream_context_get_options($this->context) : [];
+
+        if ($isoFile === self::$lastFileName && self::$lastContextOptions === $currentOptions) {
+            // Use the last reader if the file (and options) are the same, to prevent reload all iso file data
             // This is useful and faster, when using recursive directory iterator for example
             $this->reader = self::$lastReader;
         } else {
-            $this->reader = new Reader($isoFile);
+            $this->reader = new Reader($isoFile, $this->decodeOptions());
             self::$lastReader = $this->reader;
             self::$lastFileName = $isoFile;
+            self::$lastContextOptions = $currentOptions;
         }
 
 
@@ -206,5 +219,26 @@ final class StreamWrapper
         if ($internalFile !== '') {
             $this->internalFile = $this->reader->getFile($internalFile, $followSymlinks);
         }
+    }
+
+    private function decodeOptions() : ReaderOptions
+    {
+        if (!is_resource($this->context)) {
+            return new ReaderOptions();
+        }
+
+        $options = stream_context_get_options($this->context)['iso9660'] ?? [];
+
+        if (empty($options)) {
+            return new ReaderOptions();
+        }
+
+        $result = new ReaderOptions();
+
+        if (isset($options['showHiddenFiles'])) {
+            $result->showHiddenFiles = (bool) $options['showHiddenFiles'];
+        }
+
+        return $result;
     }
 }

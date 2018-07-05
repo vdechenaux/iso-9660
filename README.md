@@ -50,6 +50,27 @@ You must separate the iso file and the internal path with a `#`, even if the rig
 
 You can use the `\ISO9660\Reader` class if you don't want to use native PHP functions.
 
+### Custom context options
+
+You can configure some behaviors of the reader:
+- `showHiddenFiles` (boolean, default: `false`) Set it to `true` to see/read hidden files.
+
+To use options, you have to do something like this:
+
+```php
+$opts = [
+    'iso9660' => [
+        'showHiddenFiles'  => true,
+    ]
+];
+
+$context  = stream_context_create($opts);
+
+file_get_contents('iso9660:///tmp/file.iso#hidden.mp3', false, $context);
+```
+
+If you are using the `\ISO9660\Reader` class, you can use theses options by passing an `\ISO9660\ReaderOptions` object to the constructor.
+
 ### Read from an optical drive
 
 As this package is an ISO9660 implementation, you can directly read an optical drive by doing something like this:
