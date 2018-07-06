@@ -1,5 +1,7 @@
 {
     "name": "vdechenaux/iso-9660",
+    "description": "Stream Wrapper for ISO9660 files (.iso files)",
+    "keywords": ["iso", "iso9660", "9660", "cdrom", "joliet", "rock-ridge"],
     "type": "library",
     "license": "MIT",
     "authors": [
