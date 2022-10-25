@@ -12,7 +12,7 @@ class StreamWrapperTest extends TestCase
     private const isoPathWithScheme = 'iso9660://'.self::isoPath;
     private const isoWithoutRockRidgePathWithScheme = 'iso9660://'.self::isoWithoutRockRidgePath;
 
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         StreamWrapper::register();
     }
@@ -116,7 +116,7 @@ RAW;
         self::assertEquals($expected, file_get_contents(self::isoPathWithScheme.'#hiddenFile', false, $context));
 
         // Same file, without custom context : error
-        self::expectException(Warning::class);
+        $this->expectWarning();
         file_get_contents(self::isoPathWithScheme.'#hiddenFile');
     }
 
@@ -136,7 +136,7 @@ RAW;
     {
         StreamWrapper::register();
 
-        self::expectException(Warning::class);
+        $this->expectWarning();
         file_get_contents(self::isoPathWithScheme.'#unknown.mp3');
     }
 
@@ -144,7 +144,7 @@ RAW;
     {
         StreamWrapper::register();
 
-        self::expectException(Warning::class);
+        $this->expectWarning();
         fopen(self::isoPathWithScheme.'#index.php', 'w');
     }
 
@@ -152,7 +152,7 @@ RAW;
     {
         StreamWrapper::register();
 
-        self::expectException(Warning::class);
+        $this->expectWarning();
         mkdir(self::isoPathWithScheme.'#index.php');
     }
 

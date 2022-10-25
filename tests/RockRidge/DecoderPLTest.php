@@ -10,7 +10,7 @@ Class DecoderPLTest extends TestCase
      */
     private $tested;
 
-    public function setUp()
+    public function setUp(): void
     {
         $this->tested = new DecoderPL();
     }
