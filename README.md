@@ -2,7 +2,7 @@
 
 PHP Stream Wrapper for ISO9660 files (.iso files)
 
-[![Build Status](https://travis-ci.org/vdechenaux/iso-9660.svg?branch=master)](https://travis-ci.org/vdechenaux/iso-9660)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/vdechenaux/iso-9660/tree/master.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/vdechenaux/iso-9660/tree/master)
 [![Coverage Status](https://coveralls.io/repos/github/vdechenaux/iso-9660/badge.svg?branch=master)](https://coveralls.io/github/vdechenaux/iso-9660?branch=master)
 
 ## Usage

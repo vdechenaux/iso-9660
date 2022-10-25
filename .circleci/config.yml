@@ -1,0 +1,39 @@
+version: 2.1
+
+workflows:
+  main:
+    jobs:
+      - unit-tests:
+          matrix:
+            parameters:
+              version: ["7.4", "8.0", "8.1"]
+              preferLowest: ["--prefer-lowest", ""]
+
+jobs:
+  unit-tests:
+    parameters:
+      version:
+        type: string
+      preferLowest:
+        type: string
+    docker:
+      - image: cimg/php:<< parameters.version >>
+    steps:
+      - checkout
+      - run:
+          name: "Composer"
+          command: composer update --no-interaction << parameters.preferLowest >>
+      - run:
+          name: "Pre Coverage"
+          command: |
+            sudo -E install-php-extensions xdebug
+            sudo docker-php-ext-enable xdebug
+            mkdir -p build/logs
+      - run:
+          name: "PHPUnit"
+          command: |
+            php -dxdebug.mode=coverage vendor/bin/phpunit --coverage-clover build/logs/clover.xml
+      - run:
+          name: "Post Coverage"
+          command: |
+            vendor/bin/php-coveralls
