@@ -195,4 +195,16 @@ RAW;
 
         self::assertNull($reader->getFile('unknownFile'));
     }
+
+    public function test getVolumeDescriptor()
+    {
+        $reader = new Reader(self::isoWithRockRidgePath);
+
+        $expected = 'CDROM                           ';
+
+        self::assertSame(
+          $expected,
+          $reader->getVolumeDescriptor()['VolumeIdentifier']
+        );
+    }
 }

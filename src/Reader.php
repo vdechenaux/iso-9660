@@ -133,6 +133,14 @@ final class Reader
         return fread($this->stream, $length);
     }
 
+   /**
+    * @return array
+    */
+    public function getVolumeDescriptor() : array
+    {
+        return $this->volumeDescriptor;
+    }
+
     /**
      * @return string[]
      */
