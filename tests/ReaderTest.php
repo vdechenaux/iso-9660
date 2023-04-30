@@ -9,6 +9,7 @@ class ReaderTest extends TestCase
     private const isoWithJolietPath = __DIR__ . '/fixtures/withJoliet.iso';
     private const isoWithRockRidgeAndJolietPath = __DIR__ . '/fixtures/withRockRidgeAndJoliet.iso';
     private const isoWithoutRockRidgePath = __DIR__ . '/fixtures/withoutRockRidge.iso';
+    private const isoWithMysterySystemUseDataPath = __DIR__ . '/fixtures/withMysterySystemUseData.iso';
 
     public function dataProvider listFiles() : array
     {
@@ -194,5 +195,19 @@ RAW;
         $reader = new Reader(self::isoWithRockRidgePath);
 
         self::assertNull($reader->getFile('unknownFile'));
+    }
+
+    public function test unknown system use data()
+    {
+        $reader = new Reader(self::isoWithMysterySystemUseDataPath);
+
+        $expected = <<<RAW
+<?php
+
+phpinfo();
+
+RAW;
+
+        self::assertSame($expected, $reader->getFileContent('/INDEX.PHP'));
     }
 }
