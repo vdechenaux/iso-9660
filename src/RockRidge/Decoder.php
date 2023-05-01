@@ -36,6 +36,11 @@ final class Decoder
                 fseek($stream, ($blockSize * $CEdata['Location']) + $CEdata['Offset']);
                 $rawData .= fread($stream, $CEdata['AreaLength']);
                 fseek($stream, $currentPos);
+            } elseif ($length === 0) {
+              // When an ISO has non-RockRidge data at the end of the
+              // directory entry, and the length bytes just happen to be 0,
+              // return - otherwise we'll loop forever.
+              return;
             }
 
             // Skip potential padding byte
